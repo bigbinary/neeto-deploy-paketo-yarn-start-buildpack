@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"bufio"
 
 	"github.com/paketo-buildpacks/libnodejs"
 	"github.com/paketo-buildpacks/packit/v2"
@@ -38,9 +39,11 @@ func Detect() packit.DetectFunc {
 			return packit.DetectResult{}, fmt.Errorf("failed to open package.json: %w", err)
 		}
 
-		if !pkg.HasStartScript() {
-			return packit.DetectResult{}, packit.Fail.WithMessage(NoStartScriptError)
+		if pkg.HasStartScript() {
+			fmt.Println("===============> Start script:", pkg.Scripts.Start)
 		}
+
+		launchNodeModules := !checkSlugIgnore()
 
 		requirements := []packit.BuildPlanRequirement{
 			{
@@ -58,7 +61,7 @@ func Detect() packit.DetectFunc {
 			{
 				Name: NodeModules,
 				Metadata: map[string]interface{}{
-					"launch": true,
+					"launch": launchNodeModules,
 				},
 			},
 		}
@@ -95,3 +98,37 @@ func checkLiveReloadEnabled() (bool, error) {
 	}
 	return false, nil
 }
+
+
+func checkSlugIgnore() bool {
+	filename := ".slugignore"
+
+	// Check if the file exists
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		return false
+	}
+
+	// Open the file
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return false
+	}
+	defer file.Close()
+
+	// Check if "/node_modules" exists as an exact line
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if scanner.Text() == "/node_modules" {
+			return true
+		}
+	}
+
+	// Handle potential scanner errors
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading file:", err)
+	}
+
+	return false
+}
+
