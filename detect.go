@@ -58,7 +58,7 @@ func Detect() packit.DetectFunc {
 			{
 				Name: NodeModules,
 				Metadata: map[string]interface{}{
-					"launch": false,
+					"launch": true,
 				},
 			},
 		}
